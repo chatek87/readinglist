@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"readinglist/internal/data"
 	"strconv"
 	"time"
+
+	"github.com/chatek87/readinglist/internal/data"
 )
 
 func (app *application) healthcheck(w http.ResponseWriter, r *http.Request) {
