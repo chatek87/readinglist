@@ -30,7 +30,7 @@ func (app *application) healthcheck(w http.ResponseWriter, r *http.Request) {
 
 	js = append(js, '\n')
 
-	w.Header().Set("Content-Type", "application.json")
+	w.Header().Set("Content-Type", "application/json")
 
 	w.Write(js)
 }
@@ -59,14 +59,28 @@ func (app *application) getCreateBooksHandler(w http.ResponseWriter, r *http.Req
 				Version:   1,
 			},
 		}
-		if err := app.writeJSON(w, http.StatusOK, books); err != nil {
+		if err := app.writeJSON(w, http.StatusOK, envelope{"books": books}); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 	}
 
 	if r.Method == http.MethodPost {
-		fmt.Fprintln(w, "Added a new book to the reading list.")
+		var input struct {
+			Title     string   `json:"title"`
+			Published int      `json:"published"`
+			Pages     int      `json:"pages"`
+			Genres    []string `json:"genres"`
+			Rating    float64  `json:"rating"`
+		}
+
+		err := app.readJSON(w, r, &input)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Fprintf(w, "%v\n", input)
 	}
 }
 
@@ -100,7 +114,7 @@ func (app *application) getBook(w http.ResponseWriter, r *http.Request) {
 		Version:   1,
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, book ); err != nil {
+	if err := app.writeJSON(w, http.StatusOK, envelope{"book": book}); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -112,7 +126,52 @@ func (app *application) updateBook(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 	}
-	fmt.Fprintf(w, "Update the details of book with ID: %d", idInt)
+	var input struct {
+		Title     *string  `json:"title"`
+		Published *int     `json:"published"`
+		Pages     *int     `json:"pages"`
+		Genres    []string `json:"genres"`
+		Rating    *float32 `json:"rating"`
+	}
+
+	book := data.Book{
+		ID:        idInt,
+		CreatedAt: time.Now(),
+		Title:     "Echoes in the Darknes",
+		Published: 1053,
+		Pages:     200,
+		Genres:    []string{"Fiction", "Thriller"},
+		Rating:    4.1,
+		Version:   1,
+	}
+
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	if input.Title != nil {
+		book.Title = *input.Title
+	}
+
+	if input.Published != nil {
+		book.Published = *input.Published
+	}
+
+	if input.Pages != nil {
+		book.Pages = *input.Pages
+	}
+
+	if len(input.Genres) > 0 {
+		book.Genres = input.Genres
+	}
+
+	if input.Rating != nil {
+		book.Rating = *input.Rating
+	}
+
+	fmt.Fprintf(w, "%v\n", book)
 }
 
 func (app *application) deleteBook(w http.ResponseWriter, r *http.Request) {

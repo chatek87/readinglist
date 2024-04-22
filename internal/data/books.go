@@ -12,3 +12,4 @@ type Book struct {
 	Rating    float32   `json:"rating,omitempty"`
 	Version   int32     `json:"-"`
 }
+ 
