@@ -9,3 +9,4 @@ func (app *application) route() *http.ServeMux {
 	mux.HandleFunc("/v1/books/", app.getUpdateDeleteBooksHandler)
 	return mux
 }
+
