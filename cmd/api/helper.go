@@ -10,13 +10,17 @@ import (
 type envelope map[string]any
 
 // Credit: Alex Edwards, Let's Go Further
-func (app *application) writeJSON(w http.ResponseWriter, status int, data envelope) error {
+func (app *application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {
 	js, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		return err
 	}
 
 	js = append(js, '\n')
+
+	for key, value := range headers {
+		w.Header()[key] = value
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -33,7 +37,7 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 	dec.DisallowUnknownFields()
 
 	if err := dec.Decode(dst); err != nil {
-		// custom error handling: alex edwards, let's go further ch. 4
+		// Custom Error Handling: Alex Edwards, Let's Go Further Chapter 4
 		return err
 	}
 

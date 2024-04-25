@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/chatek87/readinglist/internal/data"
 	_ "github.com/lib/pq"
 )
 
@@ -17,30 +18,26 @@ const version = "1.0.0"
 type config struct {
 	port int
 	env  string
-	dsn string	// "data name service" aka connection string
+	dsn  string
 }
 
 type application struct {
 	config config
 	logger *log.Logger
+	models data.Models
 }
 
 func main() {
-	var cfg config // instantiate config
-	// define flags using stdlib's flag package
+	var cfg config
+
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
-	flag.IntVar(&cfg.port, "p", 4000, "API server port (shorthand)")
-	flag.StringVar(&cfg.env, "env", "dev", "Environment (dev|stage|prod)")
-	flag.StringVar(&cfg.env, "e", "dev", "Environment (dev|stage|prod) (shorthand)")
+	flag.StringVar(&cfg.env, "env", "dev", "Environment (dev|staging|prod)")
 	flag.StringVar(&cfg.dsn, "db-dsn", os.Getenv("READINGLIST_DB_DSN"), "PostgreSQL DSN")
 	flag.Parse()
 
-	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime) // instantiate logger
+	cfg.dsn = "postgres://postgres:erin@localhost/readinglist?sslmode=disable"
 
-	app := &application{ // instantiate app with our logger and config
-		config: cfg,
-		logger: logger,
-	}
+	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
 	db, err := sql.Open("postgres", cfg.dsn)
 	if err != nil {
@@ -56,17 +53,23 @@ func main() {
 
 	logger.Printf("database connection pool established")
 
+	app := &application{
+		config: cfg,
+		logger: logger,
+		models: data.NewModels(db),
+	}
+
 	addr := fmt.Sprintf(":%d", cfg.port)
 
-	srv := &http.Server{ // instantiate http server from stdlib's net/http packagef
-		Addr:         addr, // configure server stuff
-		Handler:      app.route(),
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      app.routes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
 
-	logger.Printf("Starting %s server on %s", cfg.env, addr)
-	err = srv.ListenAndServe() // start the server (err captures any error returned)
-	logger.Fatal(err)           // any err thrown will be logged here
+	logger.Printf("starting %s server on %s", cfg.env, addr)
+	err = srv.ListenAndServe()
+	logger.Fatal(err)
 }
